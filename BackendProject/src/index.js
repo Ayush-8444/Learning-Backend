@@ -11,8 +11,8 @@ db_connection()
     app.on("error", (error) => {
         console.log("index : Error : ",error);        
     })
-    app.listen(process.env.PORT || 8000, () => {
-        console.log("server is listening on the port ", process.env.PORT || 8000);  
+    app.listen(process.env.PORT , () => {
+        console.log("server is listening on the port ", process.env.PORT );  
     });
 })
 .catch((error) => {
