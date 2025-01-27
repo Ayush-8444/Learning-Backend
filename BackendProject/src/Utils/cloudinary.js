@@ -1,5 +1,16 @@
 import { v2 as cloudinary } from "cloudinary"
+import { log } from "console";
 import fs from "fs"
+
+function extractPublicId(url) {
+  const parts = url.split("/");
+  // Get the last part (e.g., "cr4mxeqx5zb8rlakpfkg.jpg")
+    const fileName = parts[parts.length - 1];
+    // Remove the file extension
+    const publicId = fileName.split(".")[0];
+    // Return only the unique identifier
+    return publicId;
+}
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -24,14 +35,37 @@ const uploadFileOnCloudinary = async (localFilePath) => {
         }
         console.log("File upload failed");
         return null
-    } catch (error) {
 
+    } catch (error) {
         console.log("cloudinary : ", error)
-        
     } finally {
         
         fs.unlinkSync(localFilePath)
     }
 }
 
-export {uploadFileOnCloudinary}
+const deleteFileFromCloudinary = async (cloudinaryUrl) => {
+    
+    try {
+        if (!cloudinaryUrl) {
+            console.log("cloudinary url not found")
+            return null
+        }
+    
+        const publicId = extractPublicId(cloudinaryUrl)
+    
+        const result = await cloudinary.uploader.destroy(publicId)
+    
+        if (result.result === "ok") {
+            console.log("File deleted successfully");
+            return true
+        }
+        return false
+    } catch (error) {
+        console.log("cloudinary : ", error);
+
+    }
+
+}
+
+export { uploadFileOnCloudinary, deleteFileFromCloudinary };
