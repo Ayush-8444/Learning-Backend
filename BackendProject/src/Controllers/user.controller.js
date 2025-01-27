@@ -5,6 +5,7 @@ import { User } from "../Models/user.model.js";
 import { uploadFileOnCloudinary, deleteFileFromCloudinary } from "../Utils/cloudinary.js";
 import { apiResponse } from "../Utils/apiResponse.js";
 import jwt from "jsonwebtoken"
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshToken = async (userid) => {
   try {
@@ -296,6 +297,120 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 
 })
 
+const getChannelInformation = asyncHandler(async (req, res) => {
+  const { username } = req.params
+  
+  if (!username?.trim()) throw new apiError(400, "Username not found")
+  
+  const channel = await User.aggregate([
+    {
+      $match: {
+        username: username?.toLowerCase(),
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $addFields: {
+        subscriberCount: {
+          $size: "$subscribers"
+        },
+        subscribedToCount: {
+          $size: "$subscribedTo"
+        },
+        isSubscribed: {
+          $cond: {
+            if: {
+              $in: [req.user?._id, "$subscribers.subscriber"]
+            },
+            then: true,
+            else: false
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscriberCount: 1,
+        subscribedToCount: 1,
+        isSubscribed: 1,
+      }
+    }
+  ]);
+
+  if (!channel.length) throw new apiError(400, "Channel does not exists")
+
+  return res.status(200).json(new apiResponse(200, "Channel fetched successfully", channel[0]))
+
+})
+
+const getUserWatchHistory = asyncHandler(async (req, res) => {
+  
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id : mongoose.Types.ObjectId(req.user?._id)
+      }
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: owner,
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar:1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner"
+              }
+            }
+          }
+        ]
+      },
+    }
+  ])
+
+  if(!user) throw new apiError(400, "User not found")
+
+  return res.status(200).json( new apiResponse(200, "Successfully fetched watch history", user[0].watchHistory ))
+})
+
 export {
   registerUser,
   loginUser,
@@ -305,5 +420,7 @@ export {
   getCurrentUser,
   updateUserDetails,
   updateAvatarImage,
-  updateCoverImage
+  updateCoverImage,
+  getChannelInformation,
+  getUserWatchHistory
 };

@@ -5,7 +5,7 @@ const subscriptionSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
     },
-    channel: {
+     updateCoverImage: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
     }
